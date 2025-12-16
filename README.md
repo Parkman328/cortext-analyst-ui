@@ -14,6 +14,23 @@ A beautiful FastAPI-based web interface for processing questions through Snowfla
 - ⚡ **Error Handling** - Comprehensive error tracking including error 392708
 - 🔒 **Secure** - Credentials never stored, session-based only
 
+## Architecture
+
+At a high level, Cortex Analyst UI consists of:
+
+- **FastAPI backend**
+  - `main.py` bootstraps the app, configures CORS, mounts static files, and exposes `/` and `/health`.
+  - `routers/config.py` exposes the Snowflake configuration endpoint (`/api/configure`).
+  - `routers/jobs.py` manages CSV upload, job lifecycle, status polling, and result downloads.
+- **Processing engine**
+  - `cortex_processor.py` owns the Snowflake Snowpark session and the logic for calling Cortex Analyst and executing generated SQL.
+  - Tracks per-job progress using a `ProcessingStatus` dataclass and streams updates back via callbacks.
+- **Configuration & models**
+  - `config.py` centralizes application settings (dirs, timeouts, logging, CORS) via Pydantic Settings.
+  - `models.py` defines Pydantic request/response models used by the API.
+- **Frontend UI**
+  - `static/index.html` is a single-page HTML UI that talks to the FastAPI backend via the JSON/CSV endpoints.
+
 ## Prerequisites
 
 - Python 3.8 or higher
@@ -59,6 +76,17 @@ uvicorn main:app --host 0.0.0.0 --port 8000 --reload
 Navigate to: http://localhost:8000
 
 ## Usage
+
+## UI Overview
+
+The web UI (`static/index.html`) is a single-page interface that:
+
+- Shows a **Snowflake connection panel** where you enter account, user, password, warehouse, database, schema, and semantic model.
+- Provides a **drag-and-drop upload area** (or file picker) for CSVs with `Id` and `Question` columns.
+- Displays a **job status panel** with real-time progress (processed, successful, failed, error 392708) powered by `/api/status/{job_id}`.
+- Lets you **download results** in JSON or CSV format once processing completes.
+
+All interactions go through the documented API endpoints below; there is no separate frontend server.
 
 ### Step 1: Configure Snowflake Connection
 
@@ -175,6 +203,16 @@ GET /api/results/{job_id}/csv
 GET /api/jobs
 ```
 
+### Delete Job
+```http
+DELETE /api/jobs/{job_id}
+```
+
+### Health Check
+```http
+GET /health
+```
+
 ## Configuration
 
 ### Environment Variables
@@ -240,13 +278,19 @@ self.delay_between_requests = 5  # seconds
 
 ```
 cortex-analyst-ui/
-├── main.py                 # FastAPI application
-├── cortex_processor.py     # Core processing logic
+├── main.py                 # FastAPI application entrypoint
+├── config.py               # Application configuration (settings, directories, logging)
+├── models.py               # Pydantic models for request/response validation
+├── cortex_processor.py     # Core processing logic and Snowflake interaction
+├── routers/
+│   ├── __init__.py         # Router package
+│   ├── config.py           # Configuration endpoints (/api/configure)
+│   └── jobs.py             # Job processing endpoints (/api/upload, /api/status, /api/results, /api/jobs)
 ├── requirements.txt        # Python dependencies
 ├── static/
-│   └── index.html         # Frontend UI
-├── uploads/               # Uploaded CSV files
-├── outputs/               # Generated results
+│   └── index.html          # Frontend UI
+├── uploads/                # Uploaded CSV files
+├── outputs/                # Generated results
 └── README.md
 ```
 
@@ -328,6 +372,37 @@ For issues and questions:
 - Built with FastAPI
 - UI styled with Tailwind CSS
 - Powered by Snowflake Cortex Analyst
+
+## How to Extend
+
+### Add a New API Endpoint
+
+1. **Choose a router**
+   - For configuration-related endpoints, add to `routers/config.py`.
+   - For upload, jobs, or results, add to `routers/jobs.py`.
+
+2. **Define request/response models** (if needed)
+   - Add new Pydantic models in `models.py`.
+   - Reuse existing models where possible to keep the API consistent.
+
+3. **Implement the endpoint**
+   - Add a new `@router.get`, `@router.post`, etc. function in the appropriate router.
+   - Use `models.py` types for `response_model` and request bodies.
+   - Log important actions with the module logger.
+
+4. **Wire in processing logic**
+   - If the endpoint needs Snowflake or Cortex Analyst, use `CortexProcessor` from `cortex_processor.py`.
+   - Access the shared processor instance via `get_processor()` in `routers.config`.
+
+5. **Update documentation**
+   - Add the new endpoint to the **API Endpoints** section above.
+   - Optionally update the **UI Overview** and `static/index.html` if the UI changes.
+
+### Adjust Behavior Without New Endpoints
+
+- **Timeouts, retries, pacing**: tweak `api_timeout`, `max_retries`, and `delay_between_requests` in `CortexProcessor`.
+- **Directories, ports, logging, CORS**: adjust defaults in `config.py` or override via environment variables.
+- **Front-end behavior**: edit `static/index.html` to change copy, layout, or styling.
 
 ## Changelog
 
