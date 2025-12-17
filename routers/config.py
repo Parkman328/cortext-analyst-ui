@@ -56,7 +56,7 @@ async def configure_connection(config: SnowflakeConfig):
             password=config.password,
             warehouse=config.warehouse,
             database=config.database,
-            schema=config.schema_name,
+            schema_name=config.schema_name,
             semantic_model=config.semantic_model
         )
 

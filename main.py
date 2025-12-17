@@ -11,7 +11,6 @@ import logging
 
 from config import settings, create_directories
 from routers import config, jobs
-from cortex_processor import CortexProcessor
 
 
 logging.basicConfig(
@@ -25,18 +24,6 @@ logger = logging.getLogger(__name__)
 async def lifespan(app: FastAPI):
     """Application lifespan handler"""
     create_directories()
-    
-    # Initialize CortexProcessor with default values
-    try:
-        default_processor = CortexProcessor()
-        if default_processor.test_connection():
-            config.set_processor(default_processor)
-            logger.info("Default Snowflake connection established successfully")
-        else:
-            logger.warning("Default Snowflake connection failed - configuration required")
-    except Exception as e:
-        logger.error(f"Failed to initialize default connection: {e}")
-    
     logger.info("Application startup complete")
     yield
     logger.info("Application shutdown")

@@ -39,7 +39,7 @@ class CortexProcessor:
     
     def __init__(
         self,
-        account: str = 'AYFRZOA',
+        account: str = 'AYFRZOA-QLIK',
         user: str = 'JRP',
         password: str = 'qlik123!',
         warehouse: str = 'CORTEX_ANALYST_WH',
