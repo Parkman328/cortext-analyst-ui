@@ -39,12 +39,12 @@ class CortexProcessor:
     
     def __init__(
         self,
-        account: str,
-        user: str,
-        password: str,
-        warehouse: str,
+        account: str = 'AYFRZOA',
+        user: str = 'JRP',
+        password: str = 'qlik123!',
+        warehouse: str = 'CORTEX_ANALYST_WH',
         database: str = "CORTEX_ANALYST_DEMO",
-        schema: str = "OMNICHEM",
+        schema_name: str = "OMNICHEM",
         semantic_model: str = "@CORTEX_ANALYST_DEMO.OMNICHEM.RAW_DATA/OMNICHEM_V2_1_ENHANCED.yaml"
     ):
         """Initialize processor with Snowflake connection"""
@@ -54,7 +54,7 @@ class CortexProcessor:
             "password": password,
             "warehouse": warehouse,
             "database": database,
-            "schema": schema
+            "schema": schema_name
         }
         
         self.semantic_model = semantic_model

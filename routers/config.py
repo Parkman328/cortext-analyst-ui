@@ -26,6 +26,18 @@ def set_processor(proc: CortexProcessor):
     processor = proc
 
 
+@router.get("/configure", response_model=SnowflakeConfig)
+async def get_configuration():
+    """
+    Get current Snowflake configuration with defaults
+    
+    Returns:
+        Current configuration with default values
+    """
+    # Return default configuration
+    return SnowflakeConfig()
+
+
 @router.post("/configure", response_model=ConfigResponse)
 async def configure_connection(config: SnowflakeConfig):
     """
@@ -44,7 +56,7 @@ async def configure_connection(config: SnowflakeConfig):
             password=config.password,
             warehouse=config.warehouse,
             database=config.database,
-            schema=config.schema,
+            schema=config.schema_name,
             semantic_model=config.semantic_model
         )
 
