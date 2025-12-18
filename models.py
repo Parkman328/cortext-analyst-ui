@@ -4,20 +4,22 @@ Pydantic models for request/response validation
 
 from datetime import datetime
 from typing import Optional
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ConfigDict
 
 
 class SnowflakeConfig(BaseModel):
     """Snowflake connection configuration"""
+    
+    model_config = ConfigDict(populate_by_name=True)
 
-    account: str = Field(default="AYFRZOA", description="Snowflake account identifier")
+    account: str = Field(default="AYFRZOA-QLIK", description="Snowflake account identifier")
     user: str = Field(default="JRP", description="Snowflake username")
     password: str = Field(default="qlik123!", description="Snowflake password")
     warehouse: str = Field(default="CORTEX_ANALYST_WH", description="Snowflake warehouse name")
     database: str = Field(default="CORTEX_ANALYST_DEMO", description="Database name")
-    schema_name: str = Field(default="OMNICHEM", description="Schema name")
+    schema_name: str = Field(default="OMNICHEM", alias="schema", serialization_alias="schema", description="Schema name")
     semantic_model: str = Field(
-        default="@CORTEX_ANALYST_DEMO.OMNICHEM.RAW_DATA/OMNICHEM_V2_1_ENHANCED.yaml",
+        default="@CORTEX_ANALYST_DEMO.OMNICHEM.RAW_DATA/OMNICHEM_V2_1.yaml",
         description="Semantic model path"
     )
 

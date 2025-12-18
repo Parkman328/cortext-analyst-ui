@@ -6,6 +6,7 @@ from fastapi import APIRouter, File, UploadFile, HTTPException, BackgroundTasks
 from fastapi.responses import FileResponse
 import pandas as pd
 import json
+import csv
 import uuid
 import os
 from datetime import datetime
@@ -55,7 +56,7 @@ async def process_questions(job_id: str, csv_path: Path):
             json.dump(results, f, indent=2, default=str)
 
         results_df = pd.DataFrame(results)
-        results_df.to_csv(output_csv, index=False)
+        results_df.to_csv(output_csv, index=False, quoting=csv.QUOTE_ALL, escapechar='\\')
 
         processing_jobs[job_id].status = "completed"
         processing_jobs[job_id].completed_at = datetime.now()

@@ -10,6 +10,7 @@ from typing import Optional, Callable
 import pandas as pd
 from pathlib import Path
 import logging
+import requests
 
 import snowflake.snowpark as snowpark
 from snowflake.snowpark import Session
@@ -45,7 +46,7 @@ class CortexProcessor:
         warehouse: str = 'CORTEX_ANALYST_WH',
         database: str = "CORTEX_ANALYST_DEMO",
         schema_name: str = "OMNICHEM",
-        semantic_model: str = "@CORTEX_ANALYST_DEMO.OMNICHEM.RAW_DATA/OMNICHEM_V2_1_ENHANCED.yaml"
+        semantic_model: str = "@CORTEX_ANALYST_DEMO.OMNICHEM.RAW_DATA/OMNICHEM_V2_1.yaml"
     ):
         """Initialize processor with Snowflake connection"""
         self.connection_params = {
@@ -69,22 +70,92 @@ class CortexProcessor:
     def call_cortex_analyst(self, question: str) -> dict:
         """Call Cortex Analyst for a single question.
 
-        This method is intended to be implemented using a Snowflake-accessible
-        interface that works outside the in-database Python runtime, for
-        example by issuing SQL against functions or procedures that wrap
-        Cortex Analyst via the Snowflake connector/Snowpark Session.
+        Uses Snowflake REST API to call Cortex Analyst with the configured
+        semantic model and returns the response.
 
-        The returned dictionary is expected to be compatible with the
-        structure previously produced by the internal _snowflake API, i.e.
-        containing top-level keys such as "error_code" (optional) and a
-        "message" object with a "content" list of items where each item has
-        a "type" (e.g. "text" or "sql").
+        Args:
+            question: The natural language question to ask
+
+        Returns:
+            Dictionary containing the Cortex Analyst response with keys like
+            'message' containing 'content' list with 'type' (text/sql) items.
         """
-        raise RuntimeError(
-            "call_cortex_analyst is not implemented. Implement this method "
-            "to call Snowflake Cortex Analyst using an external interface "
-            "(e.g. via SQL through the Snowpark Session)."
-        )
+        if not self.session:
+            raise RuntimeError("Not connected to Snowflake. Call test_connection() first.")
+        
+        try:
+            # Get connection details from the session
+            account = self.connection_params["account"]
+            
+            # Build the REST API URL
+            # Format: https://<account>.snowflakecomputing.com/api/v2/cortex/analyst/message
+            host = f"https://{account}.snowflakecomputing.com"
+            url = f"{host}{self.api_endpoint}"
+            
+            # Get the session token for authentication
+            # The token is available from the session's connection
+            conn = self.session._conn._conn
+            token = conn._rest._token
+            
+            # Build request headers
+            headers = {
+                "Authorization": f"Snowflake Token=\"{token}\"",
+                "Content-Type": "application/json",
+                "Accept": "application/json",
+            }
+            
+            # Build request payload
+            payload = {
+                "semantic_model_file": self.semantic_model,
+                "messages": [
+                    {
+                        "role": "user",
+                        "content": [
+                            {
+                                "type": "text",
+                                "text": question
+                            }
+                        ]
+                    }
+                ]
+            }
+            
+            # Make the API call
+            response = requests.post(
+                url,
+                headers=headers,
+                json=payload,
+                timeout=self.api_timeout / 1000  # Convert ms to seconds
+            )
+            
+            # Check for errors
+            if response.status_code != 200:
+                error_msg = f"API error {response.status_code}: {response.text}"
+                logger.error(error_msg)
+                return {
+                    "error_code": str(response.status_code),
+                    "message": {
+                        "content": [
+                            {"type": "text", "text": error_msg}
+                        ]
+                    }
+                }
+            
+            # Parse and return the response
+            result = response.json()
+            logger.debug(f"Cortex Analyst response: {result}")
+            return result
+            
+        except Exception as e:
+            logger.error(f"Error calling Cortex Analyst: {e}")
+            return {
+                "error_code": "exception",
+                "message": {
+                    "content": [
+                        {"type": "text", "text": str(e)}
+                    ]
+                }
+            }
     
     def test_connection(self) -> bool:
         """Test Snowflake connection"""
